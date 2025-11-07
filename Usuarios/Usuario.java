@@ -11,8 +11,16 @@ public abstract class Usuario {
         this.senha = senha;
     }
 
-
     public String getId() { return id; }
     public String getNome() { return nome; }
     public String getEmail() { return email; }
+
+    
+    public java.util.EnumSet<Permissao> getPermissoes() {
+        return java.util.EnumSet.noneOf(Permissao.class);
+    }
+
+    public boolean pode(Permissao permissao) {
+        return getPermissoes().contains(permissao);
+    }
 }
