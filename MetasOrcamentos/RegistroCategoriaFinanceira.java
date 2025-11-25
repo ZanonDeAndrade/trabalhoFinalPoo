@@ -3,9 +3,9 @@ import java.time.LocalDate;
 public abstract class RegistroCategoriaFinanceira {
 
     protected Long id;
-    protected Usuario usuario;      
+    protected Usuario usuario;
     protected String categoria;
-    protected double valorReferencia; 
+    protected double valorReferencia;
     protected double valorAtual;
 
     protected RegistroCategoriaFinanceira(Long id, Usuario usuario, String categoria, double valorReferencia) {

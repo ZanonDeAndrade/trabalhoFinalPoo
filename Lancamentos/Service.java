@@ -1,6 +1,6 @@
 import java.util.ArrayList;
 
-public class FinanceiroService {
+public class Service {
 
     private ArrayList<Transacao> transacoes = new ArrayList<>();
     private ArrayList<CategoriaLimite> limites = new ArrayList<>();

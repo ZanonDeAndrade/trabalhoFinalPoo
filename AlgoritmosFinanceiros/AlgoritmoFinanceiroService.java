@@ -5,8 +5,8 @@ public class AlgoritmoFinanceiroService {
 
     public AlgoritmoFinanceiroService() {
         algoritmos = new ArrayList<AlgoritmoFinanceiro>();
-        algoritmos.add(new ProjecaoSaldoFuturoAlgoritmo());
-        algoritmos.add(new SugestaoEconomiaPorCategoriaAlgoritmo());
+        algoritmos.add(new ProjecaoSaldoFuturo());
+        algoritmos.add(new SugestaoEconomiaPorCategoria());
         algoritmos.add(new DeteccaoGastosForaPadraoAlgoritmo());
     }
 

@@ -1,6 +1,6 @@
 import java.util.ArrayList;
 
-public class SugestaoEconomiaPorCategoriaAlgoritmo implements AlgoritmoFinanceiro {
+public class SugestaoEconomiaPorCategoria implements AlgoritmoFinanceiro {
     public String getNome() {
         return "Sugestao de Economia por Categoria";
     }

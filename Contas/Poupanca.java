@@ -1,6 +1,6 @@
 public class Poupanca extends ContaFinanceira {
 
-    public CofrinhoVirtual(String id, String nome) {
+    public Poupanca(String id, String nome) {
         super(id, nome);
     }
 

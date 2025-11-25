@@ -19,7 +19,19 @@ public class Grupo extends Usuario{
         }
     }
 
-    public java.util.EnumSet<Permissao> permissoesDo(UsuarioIndividual usuario) {
+    @Override
+    public java.util.EnumSet<Permissao> getPermissoes() {
+        java.util.EnumSet<Permissao> acumulado = java.util.EnumSet.noneOf(Permissao.class);
+        for (int i = 0; i < quantidadeMembros; i++) {
+            MembroGrupo mg = membros[i];
+            if (mg != null && mg.getPapel() != null) {
+                acumulado.addAll(mg.getPapel().getPermissoes());
+            }
+        }
+        return acumulado;
+    }
+
+    public java.util.EnumSet<Permissao> getPermissoes(UsuarioIndividual usuario) {
         for (int i = 0; i < quantidadeMembros; i++) {
             MembroGrupo mg = membros[i];
             if (mg.getUsuario() == usuario) {
@@ -30,6 +42,6 @@ public class Grupo extends Usuario{
     }
 
     public boolean pode(UsuarioIndividual usuario, Permissao permissao) {
-        return permissoesDo(usuario).contains(permissao);
+        return getPermissoes(usuario).contains(permissao);
     }
 }
