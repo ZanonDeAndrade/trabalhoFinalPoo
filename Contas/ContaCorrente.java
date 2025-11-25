@@ -22,4 +22,9 @@ public class ContaCorrente extends ContaFinanceira {
     public double getLimiteDisponivel() {
         return (saldo + limite);
     }
+
+    @Override
+    public String toString() {
+        return nome + " | Saldo: R$ " + saldo + " | Limite: R$ " + limite + " | Disponivel: R$ " + getLimiteDisponivel();
+    }
 }
