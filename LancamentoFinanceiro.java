@@ -10,6 +10,7 @@ public class LancamentoFinanceiro {
     private double valor;
     private String categoria;
     private LocalDate data;
+    private Usuario usuario;
 
     public LancamentoFinanceiro(TipoLancamento tipo, double valor, String categoria, LocalDate data) {
         this.tipo = tipo;
@@ -48,5 +49,13 @@ public class LancamentoFinanceiro {
 
     public void setData(LocalDate data) {
         this.data = data;
+    }
+
+    public Usuario getUsuario() {
+        return usuario;
+    }
+
+    public void setUsuario(Usuario usuario) {
+        this.usuario = usuario;
     }
 }

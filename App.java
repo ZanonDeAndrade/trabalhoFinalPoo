@@ -14,12 +14,20 @@ public class App {
     private final ArrayList<MetaFinanceira> metas = new ArrayList<MetaFinanceira>();
     private final ArrayList<OrcamentoCategoria> orcamentos = new ArrayList<OrcamentoCategoria>();
     private final Map<String, ArrayList<IConta>> contasPorUsuario = new HashMap<String, ArrayList<IConta>>();
+    private final Map<String, Service> financeiroPorUsuario = new HashMap<String, Service>();
     private final AlgoritmoFinanceiroService algoritmoService = new AlgoritmoFinanceiroService();
+    private UsuarioIndividual usuarioLogado = null;
 
     public void executar() {
+        autenticar();
+        if (usuarioLogado == null) {
+            System.out.println("Encerrando...");
+            return;
+        }
         boolean rodando = true;
         while (rodando) {
-            System.out.println("\n=== MENU PRINCIPAL ===");
+            limparTela();
+            cabecalho("MENU PRINCIPAL", usuarioLogado);
             System.out.println("1) Usuarios");
             System.out.println("2) Contas");
             System.out.println("3) Lancamentos");
@@ -51,9 +59,11 @@ public class App {
     }
 
     private void menuUsuarios() {
-        System.out.println("\n--- Usuarios ---");
+        limparTela();
+        cabecalho("USUARIOS", usuarioLogado);
         System.out.println("1) Cadastrar usuario individual");
         System.out.println("2) Listar usuarios");
+        System.out.println("3) Trocar usuario logado");
         System.out.print("Escolha: ");
         String opcao = scanner.nextLine();
         if ("1".equals(opcao)) {
@@ -67,10 +77,17 @@ public class App {
             String senha = scanner.nextLine();
             UsuarioIndividual novo = new UsuarioIndividual(id, nome, email, senha);
             usuarios.add(novo);
-            System.out.println("Usuario cadastrado.");
+            usuarioLogado = novo;
+            System.out.println("Usuario cadastrado e logado.");
         } else if ("2".equals(opcao)) {
             for (UsuarioIndividual u : usuarios) {
                 System.out.println(u.getId() + " - " + u.getNome() + " (" + u.getEmail() + ")");
+            }
+        } else if ("3".equals(opcao)) {
+            UsuarioIndividual novo = escolherUsuario();
+            if (novo != null) {
+                usuarioLogado = novo;
+                System.out.println("Logado como " + novo.getNome());
             }
         } else {
             System.out.println("Opcao invalida.");
@@ -78,16 +95,22 @@ public class App {
     }
 
     private void menuContas() {
-        System.out.println("\n--- Contas ---");
+        limparTela();
+        cabecalho("CONTAS", usuarioLogado);
         System.out.println("1) Cadastrar conta para usuario");
         System.out.println("2) Depositar");
         System.out.println("3) Sacar");
         System.out.println("4) Listar contas de usuario");
+        System.out.println("5) Comprar com cartao de credito");
+        System.out.println("6) Pagar fatura cartao");
+        System.out.println("7) Ver fatura/limite cartao");
         System.out.print("Escolha: ");
         String opcao = scanner.nextLine();
         if ("1".equals(opcao)) {
-            UsuarioIndividual usuario = escolherUsuario();
-            if (usuario == null) return;
+            if (usuarioLogado == null) {
+                System.out.println("Nenhum usuario logado.");
+                return;
+            }
             System.out.println("Tipos: 1) Corrente 2) Digital 3) Poupanca 4) Carteira Investimento 5) Cartao Credito");
             String tipo = scanner.nextLine();
             System.out.print("ID da conta: ");
@@ -113,22 +136,24 @@ public class App {
                 conta = new CartaoCredito(idConta, nomeConta, limite);
             }
             if (conta != null) {
-                getContasDoUsuario(usuario).add(conta);
+                getContasDoUsuario(usuarioLogado).add(conta);
                 System.out.println("Conta cadastrada.");
             } else {
                 System.out.println("Tipo invalido.");
             }
         } else if ("2".equals(opcao) || "3".equals(opcao) || "4".equals(opcao)) {
-            UsuarioIndividual usuario = escolherUsuario();
-            if (usuario == null) return;
-            ArrayList<IConta> contas = getContasDoUsuario(usuario);
+            if (usuarioLogado == null) {
+                System.out.println("Nenhum usuario logado.");
+                return;
+            }
+            ArrayList<IConta> contas = getContasDoUsuario(usuarioLogado);
             if (contas.isEmpty()) {
                 System.out.println("Nenhuma conta para este usuario.");
                 return;
             }
             for (int i = 0; i < contas.size(); i++) {
                 IConta c = contas.get(i);
-                System.out.println((i + 1) + ") " + c.getClass().getSimpleName() + " - Saldo: " + c.getSaldo());
+                System.out.println((i + 1) + ") " + c.toString());
             }
             if ("4".equals(opcao)) {
                 return;
@@ -149,15 +174,61 @@ public class App {
                 boolean ok = conta.sacar(valor);
                 System.out.println("Saque " + (ok ? "realizado" : "falhou") + ". Saldo: " + conta.getSaldo());
             }
+        } else if ("5".equals(opcao) || "6".equals(opcao) || "7".equals(opcao)) {
+            if (usuarioLogado == null) {
+                System.out.println("Nenhum usuario logado.");
+                return;
+            }
+            ArrayList<IConta> contas = getContasDoUsuario(usuarioLogado);
+            ArrayList<CartaoCredito> cartoes = new ArrayList<CartaoCredito>();
+            for (IConta c : contas) {
+                if (c instanceof CartaoCredito) {
+                    cartoes.add((CartaoCredito) c);
+                }
+            }
+            if (cartoes.isEmpty()) {
+                System.out.println("Nenhum cartao cadastrado.");
+                return;
+            }
+            for (int i = 0; i < cartoes.size(); i++) {
+                CartaoCredito cc = cartoes.get(i);
+                System.out.println((i + 1) + ") " + cc.toString());
+            }
+            System.out.print("Escolha o cartao: ");
+            int idx = lerInt() - 1;
+            if (idx < 0 || idx >= cartoes.size()) {
+                System.out.println("Indice invalido.");
+                return;
+            }
+            CartaoCredito cc = cartoes.get(idx);
+            if ("5".equals(opcao)) {
+                System.out.print("Valor da compra: ");
+                double v = lerDouble();
+                boolean ok = cc.sacar(v);
+                System.out.println(ok ? "Compra registrada. Limite disponivel: " + cc.getLimiteDisponivel() : "Compra nao registrada (limite insuficiente).");
+            } else if ("6".equals(opcao)) {
+                System.out.print("Valor do pagamento da fatura: ");
+                double v = lerDouble();
+                cc.pagarFatura(v);
+                System.out.println("Pagamento registrado. " + cc.toString());
+            } else {
+                System.out.println(cc.toString());
+            }
         } else {
             System.out.println("Opcao invalida.");
         }
     }
 
     private void menuLancamentos() {
-        System.out.println("\n--- Lancamentos ---");
-        System.out.println("1) Adicionar lancamento");
-        System.out.println("2) Listar lancamentos");
+        limparTela();
+        cabecalho("LANCAMENTOS", usuarioLogado);
+        System.out.println("1) Adicionar lancamento simples");
+        System.out.println("2) Listar lancamentos simples");
+        System.out.println("3) Adicionar transacao parcelada");
+        System.out.println("4) Adicionar transacao recorrente");
+        System.out.println("5) Cadastrar limite por categoria");
+        System.out.println("6) Verificar alertas de limite");
+        System.out.println("7) Cadastrar despesa compartilhada");
         System.out.print("Escolha: ");
         String opcao = scanner.nextLine();
         if ("1".equals(opcao)) {
@@ -171,21 +242,89 @@ public class App {
             System.out.print("Data (YYYY-MM-DD): ");
             LocalDate data = lerData();
             LancamentoFinanceiro lanc = new LancamentoFinanceiro(tipoLanc, valor, categoria, data);
+            lanc.setUsuario(usuarioLogado);
             lancamentos.add(lanc);
             System.out.println("Lancamento adicionado.");
         } else if ("2".equals(opcao)) {
-            for (int i = 0; i < lancamentos.size(); i++) {
-                LancamentoFinanceiro l = lancamentos.get(i);
+            List<LancamentoFinanceiro> lista = getLancamentosDoUsuario();
+            for (int i = 0; i < lista.size(); i++) {
+                LancamentoFinanceiro l = lista.get(i);
                 System.out.println((i + 1) + ") " + l.getTipo() + " | " + l.getCategoria() + " | " + l.getValor() + " | " + l.getData());
             }
+        } else if ("3".equals(opcao)) {
+            Service svc = getFinanceiroAtual();
+            if (svc == null) {
+                System.out.println("Nenhum usuario logado.");
+                return;
+            }
+            Transacao base = lerTransacaoDetalhada();
+            System.out.print("Quantidade de parcelas: ");
+            int qtd = lerInt();
+            svc.criarTransacaoParcelada(base, qtd);
+            System.out.println("Transacao parcelada criada.");
+        } else if ("4".equals(opcao)) {
+            Service svc = getFinanceiroAtual();
+            if (svc == null) {
+                System.out.println("Nenhum usuario logado.");
+                return;
+            }
+            Transacao base = lerTransacaoDetalhada();
+            System.out.print("Quantidade de repeticoes: ");
+            int qtd = lerInt();
+            svc.criarTransacaoRecorrente(base, qtd);
+            System.out.println("Transacao recorrente criada.");
+        } else if ("5".equals(opcao)) {
+            Service svc = getFinanceiroAtual();
+            if (svc == null) {
+                System.out.println("Nenhum usuario logado.");
+                return;
+            }
+            System.out.print("Categoria: ");
+            String categoria = scanner.nextLine();
+            System.out.print("Limite: ");
+            double limite = lerDouble();
+            svc.cadastrarLimitePorCategoria(categoria, limite);
+            System.out.println("Limite cadastrado.");
+        } else if ("6".equals(opcao)) {
+            Service svc = getFinanceiroAtual();
+            if (svc == null) {
+                System.out.println("Nenhum usuario logado.");
+                return;
+            }
+            svc.verificarAlertasDeLimite();
+        } else if ("7".equals(opcao)) {
+            Service svc = getFinanceiroAtual();
+            if (svc == null) {
+                System.out.println("Nenhum usuario logado.");
+                return;
+            }
+            Transacao base = lerTransacaoDetalhada();
+            System.out.print("Quantidade de participantes: ");
+            int qtd = lerInt();
+            ArrayList<Participante> partes = new ArrayList<Participante>();
+            for (int i = 0; i < qtd; i++) {
+                Participante p = new Participante();
+                System.out.print("Nome do participante " + (i + 1) + ": ");
+                p.nome = scanner.nextLine();
+                System.out.print("Valor fixo (0 para usar percentual): ");
+                p.valor = lerDouble();
+                if (p.valor == 0) {
+                    System.out.print("Percentual (ex 25 para 25%): ");
+                    p.percentual = lerDouble();
+                }
+                partes.add(p);
+            }
+            svc.cadastrarDespesaCompartilhada(base, partes);
+            System.out.println("Despesa compartilhada cadastrada.");
         } else {
             System.out.println("Opcao invalida.");
         }
     }
 
     private void menuRelatorios() {
-        Dashboard dashboard = new Dashboard(lancamentos);
-        System.out.println("\n--- Relatorios ---");
+        limparTela();
+        Dashboard dashboard = new Dashboard(new ArrayList<LancamentoFinanceiro>(getLancamentosDoUsuario()));
+        cabecalho("RELATORIOS", usuarioLogado);
         System.out.println("1) Gastos por periodo");
         System.out.println("2) Comparativo por categoria");
         System.out.println("3) Ranking maiores despesas");
@@ -206,15 +345,15 @@ public class App {
         } else if ("4".equals(opcao)) {
             dashboard.relatorioEvolucaoSaldoPorMes();
         } else if ("5".equals(opcao)) {
-            Usuario usuario = escolherUsuario();
-            dashboard.relatorioResumoUsuario(usuario);
+            dashboard.relatorioResumoUsuario(usuarioLogado);
         } else {
             System.out.println("Opcao invalida.");
         }
     }
 
     private void menuMetasESimulacoes() {
-        System.out.println("\n--- Metas e Simulacoes ---");
+        limparTela();
+        cabecalho("METAS E SIMULACOES", usuarioLogado);
         System.out.println("1) Criar meta financeira");
         System.out.println("2) Criar orcamento por categoria");
         System.out.println("3) Atualizar e listar metas");
@@ -223,8 +362,6 @@ public class App {
         System.out.print("Escolha: ");
         String opcao = scanner.nextLine();
         if ("1".equals(opcao)) {
-            UsuarioIndividual usuario = escolherUsuario();
-            if (usuario == null) return;
             System.out.print("ID da meta: ");
             Long id = lerLong();
             System.out.print("Categoria: ");
@@ -233,29 +370,29 @@ public class App {
             double valor = lerDouble();
             System.out.print("Data limite (YYYY-MM-DD): ");
             LocalDate dataLimite = lerData();
-            MetaFinanceira meta = new MetaFinanceira(id, usuario, categoria, valor, dataLimite);
+            MetaFinanceira meta = new MetaFinanceira(id, usuarioLogado, categoria, valor, dataLimite);
             metas.add(meta);
             System.out.println("Meta criada.");
         } else if ("2".equals(opcao)) {
-            UsuarioIndividual usuario = escolherUsuario();
-            if (usuario == null) return;
             System.out.print("ID do orcamento: ");
             Long id = lerLong();
             System.out.print("Categoria: ");
             String categoria = scanner.nextLine();
             System.out.print("Limite: ");
             double limite = lerDouble();
-            OrcamentoCategoria o = new OrcamentoCategoria(id, usuario, categoria, limite);
+            OrcamentoCategoria o = new OrcamentoCategoria(id, usuarioLogado, categoria, limite);
             orcamentos.add(o);
             System.out.println("Orcamento criado.");
         } else if ("3".equals(opcao)) {
             for (MetaFinanceira m : metas) {
-                m.atualizarProgresso(lancamentos);
+                if (m.getResponsavel() != usuarioLogado) continue;
+                m.atualizarProgresso(getLancamentosDoUsuario());
                 System.out.println("Meta " + m.getId() + " | Categoria: " + m.getCategoria() + " | Progresso: " + m.getValorAtual() + "/" + m.getValorReferencia() + " (" + m.percentualConcluido() + "%)");
             }
         } else if ("4".equals(opcao)) {
             for (OrcamentoCategoria o : orcamentos) {
-                o.registrarDespesaEncontrada(lancamentos);
+                if (o.getDono() != usuarioLogado) continue;
+                o.registrarDespesaEncontrada(getLancamentosDoUsuario());
                 System.out.println("Orcamento " + o.getId() + " | Categoria: " + o.getCategoria() + " | Gasto: " + o.getGastoAtual() + "/" + o.getLimite() + " Estourado: " + o.isEstourado());
             }
         } else if ("5".equals(opcao)) {
@@ -263,15 +400,19 @@ public class App {
             algoritmoService.listarAlgoritmos();
             System.out.print("Escolha numero: ");
             int idx = lerInt();
-            Usuario usuario = escolherUsuario();
-            algoritmoService.executarPorIndice(idx, usuario, lancamentos);
+            algoritmoService.executarPorIndice(idx, usuarioLogado, new ArrayList<LancamentoFinanceiro>(getLancamentosDoUsuario()));
         } else {
             System.out.println("Opcao invalida.");
         }
     }
 
     private void menuRateioEGrupos() {
-        System.out.println("\n--- Rateio e Grupos ---");
+        limparTela();
+        cabecalho("RATEIO E GRUPOS", usuarioLogado);
+        if (usuarioLogado == null) {
+            System.out.println("Nenhum usuario logado.");
+            return;
+        }
         System.out.println("1) Criar grupo");
         System.out.println("2) Adicionar membro a grupo");
         System.out.println("3) Checar permissao em grupo");
@@ -291,6 +432,7 @@ public class App {
             int capacidade = lerInt();
             Grupo g = new Grupo(id, nome, email, senha, capacidade);
             grupos.add(g);
+            g.adicionarMembro(usuarioLogado, Papel.PROPRIETARIO);
             System.out.println("Grupo criado.");
         } else if ("2".equals(opcao)) {
             Grupo grupo = escolherGrupo();
@@ -308,16 +450,19 @@ public class App {
         } else if ("3".equals(opcao)) {
             Grupo grupo = escolherGrupo();
             if (grupo == null) return;
-            UsuarioIndividual usuario = escolherUsuario();
-            if (usuario == null) return;
-            System.out.println("Permissao para checar (ex: GERENCIAR_MEMBROS): ");
-            String perm = scanner.nextLine();
-            try {
-                Permissao permissao = Permissao.valueOf(perm);
-                System.out.println("Pode? " + grupo.pode(usuario, permissao));
-            } catch (IllegalArgumentException e) {
-                System.out.println("Permissao invalida.");
+            System.out.println("Escolha a permissao pelo numero:");
+            Permissao[] perms = Permissao.values();
+            for (int i = 0; i < perms.length; i++) {
+                System.out.println((i + 1) + ") " + perms[i].name());
             }
+            int idx = lerInt() - 1;
+            if (idx < 0 || idx >= perms.length) {
+                System.out.println("Opcao invalida.");
+                return;
+            }
+            Permissao permissao = perms[idx];
+            boolean pode = grupo.pode(usuarioLogado, permissao);
+            System.out.println(pode ? "Tem permissao." : "Nao tem permissao.");
         } else if ("4".equals(opcao)) {
             System.out.print("Descricao/categoria da despesa: ");
             String categoria = scanner.nextLine();
@@ -334,6 +479,7 @@ public class App {
                 System.out.print("Nome do participante " + (i + 1) + ": ");
                 String nome = scanner.nextLine();
                 LancamentoFinanceiro l = new LancamentoFinanceiro(LancamentoFinanceiro.TipoLancamento.DESPESA, valorPorPessoa, categoria + " - " + nome, LocalDate.now());
+                l.setUsuario(usuarioLogado);
                 lancamentos.add(l);
             }
             System.out.println("Despesa rateada registrada em " + qtd + " lancamentos.");
@@ -376,6 +522,36 @@ public class App {
         return null;
     }
 
+    private Transacao lerTransacaoDetalhada() {
+        Transacao t = new Transacao();
+        t.tipo = new Tipo();
+        System.out.print("Tipo (receita/despesa): ");
+        t.tipo.tipo = scanner.nextLine();
+
+        t.categoria = new Categoria();
+        System.out.print("Categoria: ");
+        t.categoria.nome = scanner.nextLine();
+        System.out.print("Subcategoria (opcional): ");
+        t.categoria.subcategoria = scanner.nextLine();
+
+        t.pagador = new Pagador();
+        System.out.print("Pagador: ");
+        t.pagador.pagador = scanner.nextLine();
+        System.out.print("Beneficiario: ");
+        t.pagador.beneficiario = scanner.nextLine();
+
+        t.data = new Data();
+        System.out.print("Data (texto livre): ");
+        t.data.data = scanner.nextLine();
+        System.out.print("Recorrencia (opcional): ");
+        t.data.recorrencia = scanner.nextLine();
+
+        System.out.print("Valor: ");
+        t.valor = lerDouble();
+        t.estornoDeId = null;
+        return t;
+    }
+
     private ArrayList<IConta> getContasDoUsuario(UsuarioIndividual usuario) {
         ArrayList<IConta> contas = contasPorUsuario.get(usuario.getId());
         if (contas == null) {
@@ -383,6 +559,81 @@ public class App {
             contasPorUsuario.put(usuario.getId(), contas);
         }
         return contas;
+    }
+
+    private Service getFinanceiroAtual() {
+        if (usuarioLogado == null) return null;
+        Service svc = financeiroPorUsuario.get(usuarioLogado.getId());
+        if (svc == null) {
+            svc = new Service();
+            financeiroPorUsuario.put(usuarioLogado.getId(), svc);
+        }
+        return svc;
+    }
+
+    private List<LancamentoFinanceiro> getLancamentosDoUsuario() {
+        List<LancamentoFinanceiro> lista = new ArrayList<LancamentoFinanceiro>();
+        for (LancamentoFinanceiro l : lancamentos) {
+            if (l != null && l.getUsuario() == usuarioLogado) {
+                lista.add(l);
+            }
+        }
+        return lista;
+    }
+
+    private UsuarioIndividual buscarUsuarioPorId(String id) {
+        for (UsuarioIndividual u : usuarios) {
+            if (u.getId().equals(id)) {
+                return u;
+            }
+        }
+        return null;
+    }
+
+    private void aguardarEnter() {
+        System.out.println("Pressione ENTER para continuar...");
+        scanner.nextLine();
+    }
+
+    private void autenticar() {
+        while (usuarioLogado == null) {
+            limparTela();
+            cabecalho("AUTENTICACAO", null);
+            System.out.println("1) Login");
+            System.out.println("2) Cadastro");
+            System.out.println("0) Sair");
+            System.out.print("Escolha: ");
+            String opcao = scanner.nextLine();
+            if ("1".equals(opcao)) {
+                System.out.print("Informe ID do usuario: ");
+                String id = scanner.nextLine();
+                UsuarioIndividual u = buscarUsuarioPorId(id);
+                if (u != null) {
+                    usuarioLogado = u;
+                    System.out.println("Login realizado como " + u.getNome());
+                } else {
+                    System.out.println("Usuario nao encontrado.");
+                }
+            } else if ("2".equals(opcao)) {
+                System.out.print("ID: ");
+                String id = scanner.nextLine();
+                System.out.print("Nome: ");
+                String nome = scanner.nextLine();
+                System.out.print("Email: ");
+                String email = scanner.nextLine();
+                System.out.print("Senha: ");
+                String senha = scanner.nextLine();
+                UsuarioIndividual novo = new UsuarioIndividual(id, nome, email, senha);
+                usuarios.add(novo);
+                usuarioLogado = novo;
+                System.out.println("Cadastro realizado e login efetuado.");
+            } else if ("0".equals(opcao)) {
+                break;
+            } else {
+                System.out.println("Opcao invalida.");
+            }
+            aguardarEnter();
+        }
     }
 
     private double lerDouble() {
@@ -419,5 +670,26 @@ public class App {
         } catch (Exception e) {
             return LocalDate.now();
         }
+    }
+
+    private void limparTela() {
+        try {
+            System.out.print("\033[H\033[2J");
+            System.out.flush();
+        } catch (Exception e) {
+            for (int i = 0; i < 50; i++) {
+                System.out.println();
+            }
+        }
+    }
+
+    private void cabecalho(String titulo) {
+        cabecalho(titulo, usuarioLogado);
+    }
+
+    private void cabecalho(String titulo, Usuario usuario) {
+        System.out.println("================================");
+        System.out.println(" " + titulo + (usuario != null ? " | Usuario: " + usuario.getNome() : ""));
+        System.out.println("================================");
     }
 }
