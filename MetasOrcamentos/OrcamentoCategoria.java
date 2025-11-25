@@ -51,6 +51,20 @@ public class OrcamentoCategoria extends RegistroCategoriaFinanceira {
         return this.valorAtual;
     }
 
+    public Long getId() {
+        return this.id;
+    }
+
+    public void registrarDespesaEncontrada(java.util.List<LancamentoFinanceiro> lancamentos) {
+        this.valorAtual = 0.0;
+        if (lancamentos == null) {
+            return;
+        }
+        for (LancamentoFinanceiro l : lancamentos) {
+            registrarDespesa(l);
+        }
+    }
+
     private boolean categoriaCorresponde(LancamentoFinanceiro lancamento) {
         if (categoria == null) {
             return false;
